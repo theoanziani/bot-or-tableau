@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bot Or — tableau de bord</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f4f0; --surface:#ffffff; --ink:#17171b; --muted:#6d6c72; --faint:#a3a2a8; --line:#e7e5df;
+  --gold:#a5822c; --gold-soft:rgba(165,130,44,.10); --pos:#2e7a58; --pos-soft:rgba(46,122,88,.10);
+  --neg:#b2433a; --neg-soft:rgba(178,67,58,.09);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e0e10; --surface:#161619; --ink:#ededf0; --muted:#8e8d96; --faint:#5c5b63; --line:#25252a;
+    --gold:#cfaa55; --gold-soft:rgba(207,170,85,.12); --pos:#5bb48d; --pos-soft:rgba(91,180,141,.12);
+    --neg:#e27467; --neg-soft:rgba(226,116,103,.12);
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--ink);font:400 14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-feature-settings:"tnum" 1,"cv11" 1;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 32px 48px}
+.num{font-variant-numeric:tabular-nums}
+.label{font-size:11px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+
+/* barre du haut */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:22px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e9cf8a,var(--gold) 60%,#7c6020);box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.brand b{font-weight:600;font-size:15px;letter-spacing:-.01em}
+.brand span{color:var(--muted);font-size:13px}
+.state{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--muted)}
+.pill{white-space:nowrap;display:inline-flex;align-items:center;gap:8px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:500;font-size:12.5px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.dot.on{background:var(--pos);box-shadow:0 0 0 0 var(--pos);animation:pulse 2.4s infinite}
+.dot.off{background:var(--neg)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--pos) 45%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+/* en-tête chiffré */
+.hero{display:grid;grid-template-columns:1fr auto;align-items:end;gap:24px;padding:34px 0 30px}
+.big{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:76px;line-height:1;letter-spacing:-.02em;margin-top:10px}
+.big small{font-size:.45em;color:var(--muted);margin-left:6px}
+.sub{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px;color:var(--muted);font-size:13px}
+.chip{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-weight:500;font-size:12.5px}
+.chip.pos{background:var(--pos-soft)} .chip.neg{background:var(--neg-soft)} .chip.neu{background:var(--gold-soft);color:var(--gold)}
+.quote{text-align:right}
+.quote .v{font-size:26px;font-weight:500;letter-spacing:-.015em;margin-top:6px}
+.quote .e{color:var(--muted);font-size:13px;margin-top:2px}
+
+/* grille */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 22px 20px;min-width:0}
+.s7{grid-column:span 7}.s5{grid-column:span 5}.s12{grid-column:span 12}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:18px}
+.head .r{font-size:12.5px;color:var(--muted)}
+.empty{color:var(--muted);padding:18px 0 6px;font-size:13.5px}
+
+/* position */
+.side{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:13px;letter-spacing:.02em;padding:4px 10px;border-radius:8px}
+.side.buy{background:var(--pos-soft);color:var(--pos)} .side.sell{background:var(--neg-soft);color:var(--neg)}
+.pnl{font-size:34px;font-weight:500;letter-spacing:-.02em;margin:14px 0 2px}
+.kv{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.kv div span{display:block}
+.kv .k{font-size:11.5px;color:var(--muted);margin-bottom:3px}
+.kv .v{font-weight:500}
+.gauge{position:relative;height:46px;margin:22px 4px 0}
+.gauge .rail{position:absolute;left:0;right:0;top:20px;height:4px;border-radius:4px;
+  background:linear-gradient(90deg,var(--neg-soft),var(--line) 33%,var(--pos-soft))}
+.gauge .t{position:absolute;top:13px;width:2px;height:18px;border-radius:2px;transform:translateX(-1px)}
+.gauge .t.s{background:var(--neg)} .gauge .t.e{background:var(--muted)} .gauge .t.o{background:var(--pos)}
+.gauge .cur{position:absolute;top:15px;width:14px;height:14px;border-radius:50%;background:var(--gold);transform:translateX(-7px);
+  box-shadow:0 0 0 4px var(--gold-soft);transition:left .6s ease}
+.gauge .lb{position:absolute;top:34px;font-size:11px;color:var(--muted);transform:translateX(-50%);white-space:nowrap}
+.gauge .lb.l{transform:none} .gauge .lb.rr{transform:translateX(-100%)}
+
+/* courbe */
+svg.eq{width:100%;height:170px;display:block;overflow:visible}
+.eq .base{stroke:var(--faint);stroke-dasharray:3 4;stroke-width:1}
+.eq .line{fill:none;stroke:var(--gold);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.eq .pt{fill:var(--surface);stroke:var(--gold);stroke-width:2}
+.eq text{font:11px Inter,system-ui,sans-serif;fill:var(--muted)}
+.legend{display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--muted)}
+
+/* conditions */
+.conds{display:grid;gap:10px}
+.cond{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:11px}
+.cond .ic{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600}
+.cond.ok .ic{background:var(--pos-soft);color:var(--pos)} .cond.no .ic{background:var(--neg-soft);color:var(--neg)}
+.cond.info .ic{background:var(--gold-soft);color:var(--gold)}
+.cond .n{font-weight:500;font-size:13px} .cond .d{font-size:12px;color:var(--muted)}
+.cond .st{font-size:12px;font-weight:500}
+.decision{margin-top:16px;padding-top:16px;border-top:1px solid var(--line);font-size:13px}
+.decision b{font-weight:500}
+
+/* mt5 */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.stat .k{font-size:11.5px;color:var(--muted)} .stat .v{font-size:20px;font-weight:500;letter-spacing:-.01em;margin-top:2px}
+.note{margin-top:16px;padding:10px 12px;border-radius:10px;font-size:12.5px}
+.note.err{background:var(--neg-soft);color:var(--neg)} .note.ok{background:var(--gold-soft);color:var(--ink)}
+.mini{width:100%;border-collapse:collapse;margin-top:16px;font-size:12.5px}
+.mini td{padding:7px 0;border-top:1px solid var(--line)} .mini td:last-child{text-align:right}
+
+/* tableaux */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 10px 10px 0;border-bottom:1px solid var(--line)}
+.tbl td{padding:11px 10px 11px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .r{text-align:right;padding-right:0}
+.scroll{overflow-x:auto}
+.log{list-style:none;font-size:13px}
+.log li{display:grid;grid-template-columns:110px 1fr;gap:14px;padding:9px 0;border-top:1px solid var(--line)}
+.log li:first-child{border-top:0}
+.log time{color:var(--muted)}
+.lock{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;padding:24px;z-index:9}
+.lock[hidden]{display:none}
+.lock form{width:min(360px,100%);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px}
+.lock h1{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:34px;margin:14px 0 6px}
+.lock p{color:var(--muted);font-size:13.5px;margin-bottom:18px}
+.lock input{width:100%;font:16px Inter,system-ui,sans-serif;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.lock input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.lock button{margin-top:12px;width:100%;min-height:44px;border:0;border-radius:10px;background:var(--ink);color:var(--bg);font:500 15px Inter,system-ui,sans-serif;cursor:pointer}
+.lock .err{color:var(--neg);font-size:13px;margin-top:10px;min-height:1em}
+.btn{min-height:32px;padding:6px 13px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:500 12.5px Inter,system-ui,sans-serif;cursor:pointer}
+.btn:hover{border-color:var(--faint)} .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn.dark{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn[disabled]{opacity:.5;cursor:default}
+.confirm{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:16px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);font-size:13.5px}
+.confirm[hidden],.toast[hidden]{display:none}
+.confirm .acts{display:flex;gap:8px}
+.toast{margin-top:14px;padding:10px 14px;border-radius:12px;background:var(--gold-soft);font-size:13px}
+footer{margin-top:28px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--faint);font-size:12px}
+
+@media (max-width:900px){.s7,.s5{grid-column:span 12}}
+@media (max-width:600px){
+  .wrap{padding:20px 16px 36px}
+  .hero{grid-template-columns:1fr}.quote{text-align:left}
+  .big{font-size:56px}
+  .kv{grid-template-columns:repeat(2,1fr)}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .state .clock{display:none}
+  .state{gap:8px}
+  #ver{display:none}
+  .log li{grid-template-columns:1fr;gap:2px}
+}
+</style>
+</head>
+<body>
+<div class="lock" id="lock" hidden>
+  <form id="lockform" autocomplete="off">
+    <div class="mark" aria-hidden="true"></div>
+    <h1>Bot Or</h1>
+    <p>Entre la phrase secrète affichée sur ton PC. Elle reste sur cet appareil et sert à déchiffrer les données.</p>
+    <input id="phrase" type="password" placeholder="Phrase secrète" aria-label="Phrase secrète">
+    <button type="submit">Ouvrir le tableau de bord</button>
+    <div class="err" id="lockmsg"></div>
+  </form>
+</div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><div class="mark" aria-hidden="true"></div><div><b>Bot Or</b> <span id="ver">· paper trading</span></div></div>
+    <div class="state"><span class="clock num" id="clock">—</span><span class="pill"><span class="dot" id="dot"></span><span id="run">Connexion…</span></span><button class="btn" id="rb" type="button">Relancer</button></div>
+  </header>
+  <div class="confirm" id="cf" hidden>
+    <div><b>Relancer le bot ?</b><span class="muted"> Il s'arrête puis redémarre aussitôt. La position ouverte et le capital sont conservés.</span></div>
+    <div class="acts"><button class="btn" id="cfn" type="button">Annuler</button><button class="btn dark" id="cfy" type="button">Relancer</button></div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+
+  <section class="hero">
+    <div>
+      <div class="label">Capital du compte</div>
+      <div class="big num" id="cap">—</div>
+      <div class="sub" id="capsub"></div>
+    </div>
+    <div class="quote">
+      <div class="label">Or · PAXG/USDT</div>
+      <div class="v num" id="px">—</div>
+      <div class="e num" id="pxe"></div>
+    </div>
+  </section>
+
+  <main class="grid">
+    <section class="card s7">
+      <div class="head"><div class="label">Position</div><div class="r" id="posr"></div></div>
+      <div id="pos"></div>
+    </section>
+
+    <section class="card s5">
+      <div class="head"><div class="label">Courbe du capital</div><div class="r" id="eqr"></div></div>
+      <div id="eq"></div>
+    </section>
+
+    <section class="card s5">
+      <div class="head"><div class="label">Dernière analyse</div><div class="r" id="anr"></div></div>
+      <div id="an"></div>
+    </section>
+
+    <section class="card s7">
+      <div class="head"><div class="label">MetaTrader 5 · compte démo</div><div class="r" id="mtr"></div></div>
+      <div id="mt"></div>
+    </section>
+
+    <section class="card s12">
+      <div class="head"><div class="label">Trades</div><div class="r" id="trr"></div></div>
+      <div class="scroll" id="tr"></div>
+    </section>
+
+    <section class="card s12">
+      <div class="head"><div class="label">Séances récentes</div><div class="r">toutes les 15 min</div></div>
+      <ul class="log" id="ses"></ul>
+    </section>
+  </main>
+
+  <footer>
+    <span>Argent fictif · aucune rentabilité garantie · mise à jour automatique</span>
+    <span id="upd"></span>
+  </footer>
+</div>
+
+<script>window.REMOTE={repo:"theoanziani/bot-or-tableau",topic:"bor-56e701de5edbabed"};</script>
+<script>
+const CAP0 = 250, STOP_CAP = 175, EURUSD = 1.10;
+const $ = id => document.getElementById(id);
+const nf = (v, d = 2) => (v == null || isNaN(v)) ? "—" : Number(v).toLocaleString("fr-FR", {minimumFractionDigits: d, maximumFractionDigits: d});
+const eur = (v, d = 2) => nf(v, d) + " €";
+const sgn = (v, d = 2, u = " €") => (v > 0 ? "+" : v < 0 ? "−" : "") + nf(Math.abs(v), d) + u;
+const cls = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const utc = s => s ? new Date(s.replace(" ", "T") + (s.length <= 16 ? ":00Z" : "Z")) : null;
+function ago(d){
+  if (!d) return "—";
+  const s = Math.max(0, (Date.now() - d) / 1000);
+  if (s < 60) return "à l'instant";
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h ${String(Math.floor(s % 3600 / 60)).padStart(2, "0")}`;
+  return `il y a ${Math.floor(s / 86400)} j`;
+}
+const hm = d => d ? d.toLocaleString("fr-FR", {weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"}) : "—";
+
+let last = null, lastOk = 0;
+
+function renderStatus(d){
+  const maj = utc(d.status && d.status.maj_utc);
+  const fresh = maj && (Date.now() - maj) < 20 * 60 * 1000;
+  $("dot").className = "dot " + (fresh ? "on" : "off");
+  $("run").textContent = fresh ? "Bot en marche" : (maj ? "Bot arrêté · " + ago(maj) : "Bot introuvable");
+  $("ver").textContent = "· règles " + (d.compte || "v6") + " · paper trading";
+}
+
+function renderHero(d){
+  const st = d.status || {};
+  const cap = st.capital;
+  $("cap").innerHTML = cap == null ? "—" : nf(cap) + "<small>€</small>";
+  const ch = cap - CAP0, pct = ch / CAP0 * 100;
+  const n = Number(st.trades || 0);
+  $("capsub").innerHTML = cap == null ? "" :
+    `<span class="chip ${ch > 0 ? "pos" : ch < 0 ? "neg" : "neu"} num">${sgn(ch)} · ${sgn(pct, 1, " %")}</span>
+     <span>depuis ${eur(CAP0, 0)}</span><span class="faint">·</span><span>${n} trade${n > 1 ? "s" : ""}</span>
+     <span class="faint">·</span><span>arrêt sous ${eur(STOP_CAP, 0)}</span>`;
+  $("px").textContent = d.prix ? nf(d.prix) + " $" : "—";
+  $("pxe").textContent = d.prix ? "≈ " + eur(d.prix / EURUSD) + " l'once" : "cours indisponible";
+}
+
+function renderPosition(d){
+  const p = d.status && d.status.position;
+  if (!p){
+    $("posr").textContent = "";
+    const dec = d.status && d.status.derniere_decision;
+    $("pos").innerHTML = `<div class="empty">Aucune position ouverte.<br><span class="faint">${esc(dec ? "Dernière décision : " + dec : "")}</span></div>`;
+    return;
+  }
+  const buy = p.sens === 1, e = +p.entree, s = +p.stop, tp = p.tp ? +p.tp : null, px = d.prix;
+  const risk = Math.abs(e - s);
+  const lat = px ? (px - e) * p.sens / EURUSD : null;
+  const r = px ? (px - e) * p.sens / risk : null;
+  const t0 = new Date(p.t_entree);
+  $("posr").textContent = "ouverte " + ago(t0);
+  // jauge : à gauche le stop, à droite l'objectif (ou 3R si pas d'objectif)
+  const far = tp ?? (e + p.sens * 3 * risk);
+  const at = v => Math.min(100, Math.max(0, (v - s) / (far - s) * 100));
+  $("pos").innerHTML = `
+    <span class="side ${buy ? "buy" : "sell"}">${buy ? "▲ ACHAT" : "▼ VENTE"} · 0,01 lot</span>
+    <div class="pnl num ${cls(lat)}">${lat == null ? "—" : sgn(lat)}</div>
+    <div class="muted num">résultat latent avant frais${r == null ? "" : " · " + sgn(r, 2, " R")}</div>
+    <div class="gauge" aria-hidden="true">
+      <div class="rail"></div>
+      <div class="t s" style="left:0%"></div>
+      <div class="t e" style="left:${at(e)}%"></div>
+      ${tp ? `<div class="t o" style="left:100%"></div>` : ""}
+      ${px ? `<div class="cur" style="left:${at(px)}%"></div>` : ""}
+      <div class="lb l">stop</div>
+      <div class="lb" style="left:${at(e)}%">entrée</div>
+      <div class="lb rr" style="left:100%">${tp ? "objectif 3R" : "3R (sans objectif)"}</div>
+    </div>
+    <div class="kv num">
+      <div><span class="k">Entrée</span><span class="v">${nf(e)} $</span></div>
+      <div><span class="k">Stop</span><span class="v neg">${nf(s)} $</span></div>
+      <div><span class="k">Objectif</span><span class="v ${tp ? "pos" : "faint"}">${tp ? nf(tp) + " $" : "aucun"}</span></div>
+      <div><span class="k">Risque au stop</span><span class="v">${eur(risk / EURUSD)}</span></div>
+    </div>`;
+}
+
+function renderEquity(d){
+  const caps = [CAP0, ...d.trades.map(t => +t.capital).filter(v => !isNaN(v))];
+  if (caps.length < 2){
+    $("eqr").textContent = "";
+    $("eq").innerHTML = `<div class="empty">La courbe apparaîtra après le premier trade clos.</div>`;
+    return;
+  }
+  const W = 460, H = 150, P = 6;
+  const lo = Math.min(...caps, CAP0), hi = Math.max(...caps, CAP0), pad = Math.max(2, (hi - lo) * .15);
+  const y = v => P + (1 - (v - (lo - pad)) / ((hi + pad) - (lo - pad))) * (H - 2 * P);
+  const x = i => P + i / (caps.length - 1) * (W - 2 * P);
+  const pts = caps.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+  const area = `M${x(0)},${H} L${pts.join(" L")} L${x(caps.length - 1)},${H} Z`;
+  const lastV = caps[caps.length - 1];
+  $("eqr").innerHTML = `<span class="num ${cls(lastV - CAP0)}">${sgn(lastV - CAP0)}</span>`;
+  $("eq").innerHTML = `
+    <svg class="eq" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Capital après chaque trade">
+      <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="var(--gold)" stop-opacity=".18"/><stop offset="1" stop-color="var(--gold)" stop-opacity="0"/></linearGradient></defs>
+      <line class="base" x1="0" x2="${W}" y1="${y(CAP0)}" y2="${y(CAP0)}" vector-effect="non-scaling-stroke"/>
+      <path d="${area}" fill="url(#g)"/>
+      <polyline class="line" points="${pts.join(" ")}" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div class="legend num"><span>départ ${eur(CAP0, 0)}</span><span>${caps.length - 1} trade${caps.length > 2 ? "s" : ""}</span><span>maintenant ${eur(lastV)}</span></div>`;
+}
+
+const COND = {a: ["Tendance 4h", "écart EMA 9/21"], b: ["Tendance 1h", "même sens que la 4h"], c: ["RSI 1h", "noté, non bloquant"], d: ["Cassure", "plus haut / bas des 4 h"]};
+function renderAnalysis(d){
+  const sess = d.sessions || [];
+  const s = sess[sess.length - 1];
+  const raw = (d.status && d.status.position && d.status.position.conditions) || (s && s.conditions) || "";
+  const parts = raw.split("|").map(x => x.trim()).filter(x => /^[abcd] /.test(x));
+  $("anr").textContent = s ? ago(utc(s.utc)) : "";
+  if (!parts.length){ $("an").innerHTML = `<div class="empty">Pas encore d'analyse aujourd'hui (le bot analyse de 07:00 à 18:00 UTC, en semaine).</div>`; return; }
+  $("an").innerHTML = `<div class="conds">${parts.map(p => {
+      const k = p[0], ok = /OK$/.test(p), info = k === "c";
+      const txt = p.slice(2).replace(/\s+(OK|NON)$/, "");
+      return `<div class="cond ${info ? "info" : ok ? "ok" : "no"}"><div class="ic">${info ? "i" : ok ? "✓" : "✕"}</div>
+        <div><div class="n">${COND[k][0]}</div><div class="d num">${esc(txt)}</div></div>
+        <div class="st ${info ? "muted" : ok ? "pos" : "neg"}">${info ? COND[k][1].split(",")[0] : ok ? "validée" : "non"}</div></div>`;
+    }).join("")}</div>
+    <div class="decision"><span class="muted">Décision : </span><b>${esc((d.status && d.status.derniere_decision) || (s && s.decision) || "—")}</b></div>`;
+}
+
+function renderMT5(d){
+  const m = d.mt5;
+  if (!m){ $("mtr").textContent = ""; $("mt").innerHTML = `<div class="empty">Exécuteur démo non lancé. Ouvre MetaTrader 5, puis lance « Lancer le tableau de bord.cmd ».</div>`; return; }
+  const fresh = (Date.now() - utc(m.maj_utc)) < 2 * 60 * 1000;
+  $("mtr").innerHTML = `<span class="${fresh ? "pos" : "neg"}">●</span> ${fresh ? "connecté" : "muet " + ago(utc(m.maj_utc))}`;
+  const pos = m.positions || [];
+  let h = "";
+  if (m.solde != null){
+    h += `<div class="stats num">
+      <div class="stat"><div class="k">Solde</div><div class="v">${nf(m.solde)} ${esc(m.devise || "")}</div></div>
+      <div class="stat"><div class="k">Équité</div><div class="v ${cls(m.equite - m.solde)}">${nf(m.equite)} ${esc(m.devise || "")}</div></div>
+      <div class="stat"><div class="k">Trading algo</div><div class="v ${m.algo ? "pos" : "neg"}">${m.algo ? "activé" : "désactivé"}</div></div></div>`;
+  }
+  if (m.erreur) h += `<div class="note err">${esc(m.erreur)}</div>`;
+  else if (m.algo === false) h += `<div class="note err">Active le bouton « Algo Trading » dans MetaTrader 5, sinon les ordres seront refusés.</div>`;
+  if (pos.length){
+    h += `<table class="mini num">${pos.map(p => `<tr><td><span class="side ${p.sens === "achat" ? "buy" : "sell"}">${p.sens}</span> ${p.volume} lot à ${nf(p.entree)}</td>
+      <td>stop ${nf(p.stop)} · obj. ${p.objectif ? nf(p.objectif) : "—"}</td><td class="${cls(p.profit)}">${sgn(p.profit)}</td></tr>`).join("")}</table>`;
+  } else if (m.solde != null){
+    h += `<div class="note ok">Aucune position démo ouverte. Le prochain trade du bot sera passé ici automatiquement.</div>`;
+  }
+  const o = (d.ordres || []).slice(-3).reverse();
+  if (o.length) h += `<table class="mini">${o.map(x => `<tr><td class="muted num">${esc(x.utc.slice(5, 16))}</td><td>${esc(x.action)} ${esc(x.sens)} ${x.prix ? "à " + esc(x.prix) : ""}</td><td class="muted">${esc(x.note)}</td></tr>`).join("")}</table>`;
+  if (m.compte) h += `<div class="legend"><span>compte ${esc(m.compte)} · ${esc(m.serveur || m.courtier || "")}</span><span>levier ${esc(m.levier)}</span></div>`;
+  $("mt").innerHTML = h;
+}
+
+function renderTrades(d){
+  const t = [...(d.trades || [])].reverse();
+  const tot = t.reduce((a, x) => a + (+x.net || 0), 0);
+  const wins = t.filter(x => +x.net > 0).length;
+  $("trr").innerHTML = t.length ? `<span class="num">${wins}/${t.length} gagnants · <span class="${cls(tot)}">${sgn(tot)}</span></span>` : "";
+  if (!t.length){ $("tr").innerHTML = `<div class="empty">Aucun trade clos sur ce compte pour l'instant.</div>`; return; }
+  $("tr").innerHTML = `<table class="tbl num"><thead><tr><th>#</th><th>Entrée (UTC)</th><th>Sens</th><th>Entrée</th><th>Sortie</th><th>Motif</th><th class="r">R</th><th class="r">Net</th></tr></thead><tbody>
+    ${t.map(x => `<tr><td class="muted">${esc(x.n)}</td><td>${esc(x.entree_utc)}</td>
+      <td><span class="side ${x.sens === "achat" ? "buy" : "sell"}">${esc(x.sens)}</span></td>
+      <td>${nf(+x.entree)} $</td><td>${nf(+x.sortie)} $</td><td class="muted">${esc(x.motif)}</td>
+      <td class="r ${cls(+x.R)}">${sgn(+x.R, 2, "")}</td><td class="r ${cls(+x.net)}">${sgn(+x.net)}</td></tr>`).join("")}
+    </tbody></table>`;
+}
+
+function renderSessions(d){
+  const s = [...(d.sessions || [])].reverse();
+  $("ses").innerHTML = s.length ? s.map(x => `<li><time class="num">${esc(hm(utc(x.utc)))}</time><span>${esc(x.decision)}${x.prix ? ` <span class="faint num">· ${nf(+x.prix)} $</span>` : ""}</span></li>`).join("")
+    : `<li class="muted">Aucune séance enregistrée sur ce compte.</li>`;
+}
+
+function render(d){
+  try{ renderStatus(d); }catch(e){ console.error(e); }
+  for (const f of [renderHero, renderPosition, renderEquity, renderAnalysis, renderMT5, renderTrades, renderSessions]){
+    try{ f(d); }catch(e){ console.error(f.name, e); }
+  }
+}
+
+const REMOTE = window.REMOTE || null;
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+let keyCache = {salt: null, key: null};
+async function decrypt(env, phrase){
+  if (keyCache.salt !== env.salt + phrase){
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(phrase), "PBKDF2", false, ["deriveKey"]);
+    keyCache = {salt: env.salt + phrase, key: await crypto.subtle.deriveKey(
+      {name: "PBKDF2", salt: b64(env.salt), iterations: env.iter, hash: "SHA-256"}, base, {name: "AES-GCM", length: 256}, false, ["decrypt"])};
+  }
+  const pt = await crypto.subtle.decrypt({name: "AES-GCM", iv: b64(env.iv)}, keyCache.key, b64(env.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function getPhrase(){ try{ return localStorage.getItem("bor_phrase"); }catch(e){ return window._phrase || null; } }
+function setPhrase(v){ window._phrase = v; try{ v ? localStorage.setItem("bor_phrase", v) : localStorage.removeItem("bor_phrase"); }catch(e){} }
+function lock(msg){
+  $("lock").hidden = false; $("lockmsg").textContent = msg || "";
+  $("dot").className = "dot"; $("run").textContent = "Verrouillé";
+}
+async function fetchRemote(){
+  const q = "t=" + Date.now();
+  try{
+    const r = await fetch(`https://api.github.com/repos/${REMOTE.repo}/contents/status.enc?ref=data&${q}`,
+      {headers: {Accept: "application/vnd.github.raw"}, cache: "no-store"});
+    if (!r.ok) throw new Error(r.status);
+    return await r.json();
+  }catch(e){
+    const r = await fetch(`https://raw.githubusercontent.com/${REMOTE.repo}/data/status.enc?${q}`, {cache: "no-store"});
+    return await r.json();
+  }
+}
+async function load(){
+  try{
+    if (REMOTE){
+      const phrase = getPhrase();
+      if (!phrase){ lock(); return; }
+      const env = await fetchRemote();
+      try{ last = await decrypt(env, phrase); }
+      catch(e){ setPhrase(null); lock("Phrase incorrecte."); return; }
+    } else {
+      const r = await fetch("/api", {cache: "no-store"});
+      last = await r.json();
+    }
+    lastOk = Date.now();
+    render(last);
+  }catch(e){
+    $("dot").className = "dot off"; $("run").textContent = REMOTE ? "Données en ligne indisponibles" : "Tableau de bord hors ligne";
+  }
+}
+async function sendRestart(){
+  if (!REMOTE){
+    const r = await fetch("/api/relancer", {method: "POST"});
+    return (await r.json()).message;
+  }
+  const phrase = getPhrase();
+  if (!phrase) throw new Error("phrase manquante");
+  const enc = new TextEncoder(), ts = Date.now(), nonce = crypto.getRandomValues(new Uint32Array(2)).join("");
+  const kb = await crypto.subtle.digest("SHA-256", enc.encode("bor-cmd|" + phrase));
+  const k = await crypto.subtle.importKey("raw", kb, {name: "HMAC", hash: "SHA-256"}, false, ["sign"]);
+  const sig = [...new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(`relancer|${ts}|${nonce}`)))]
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+  const r = await fetch(`https://ntfy.sh/${REMOTE.topic}`, {method: "POST", body: JSON.stringify({cmd: "relancer", ts, nonce, sig})});
+  if (!r.ok) throw new Error(r.status);
+  return "Demande envoyée : le PC relance le bot dans les 30 s (s'il est allumé).";
+}
+function toast(m){ $("toast").textContent = m; $("toast").hidden = false; clearTimeout(window._tt); window._tt = setTimeout(() => $("toast").hidden = true, 8000); }
+$("rb").addEventListener("click", () => { $("cf").hidden = !$("cf").hidden; });
+$("cfn").addEventListener("click", () => { $("cf").hidden = true; });
+$("cfy").addEventListener("click", async () => {
+  $("cfy").disabled = true;
+  try{ toast(await sendRestart()); $("cf").hidden = true; setTimeout(load, 5000); }
+  catch(e){ toast("Relance impossible : " + e.message); }
+  $("cfy").disabled = false;
+});
+$("lockform").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const v = $("phrase").value.trim();
+  if (!v) return;
+  setPhrase(v); $("lock").hidden = true; $("phrase").value = ""; load();
+});
+setInterval(() => {
+  $("clock").textContent = new Date().toLocaleTimeString("fr-FR", {timeZone: "UTC", hour: "2-digit", minute: "2-digit", second: "2-digit"}) + " UTC";
+  const rl = last && last.relance;
+  $("upd").textContent = (lastOk ? "actualisé " + ago(new Date(lastOk)) : "") + (rl ? ` · dernière relance ${ago(utc(rl.utc))} (${rl.source})` : "");
+}, 1000);
+load(); setInterval(load, REMOTE ? 90000 : 15000);
+</script>
+</body>
+</html>
