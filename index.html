@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bot Or — tableau de bord</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bot Or">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0e0e10">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
@@ -432,6 +441,7 @@ async function fetchRemote(){
     return await r.json();
   }catch(e){
     const r = await fetch(`https://raw.githubusercontent.com/${REMOTE.repo}/data/status.enc?${q}`, {cache: "no-store"});
+    if (!r.ok) throw new Error(r.status);
     return await r.json();
   }
 }
@@ -441,8 +451,13 @@ async function load(){
       const phrase = getPhrase();
       if (!phrase){ lock(); return; }
       const env = await fetchRemote();
+      if (!env || !env.ct || !env.salt) throw new Error("données indisponibles");
       try{ last = await decrypt(env, phrase); }
-      catch(e){ setPhrase(null); lock("Phrase incorrecte."); return; }
+      catch(e){
+        // seule une vraie erreur de déchiffrement efface la phrase (pas une coupure réseau ni une limite GitHub)
+        if (e && e.name === "OperationError"){ setPhrase(null); lock("Phrase incorrecte."); return; }
+        throw e;
+      }
     } else {
       const r = await fetch("/api", {cache: "no-store"});
       last = await r.json();
