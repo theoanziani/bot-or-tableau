@@ -189,7 +189,7 @@ footer{margin-top:28px;display:flex;justify-content:space-between;gap:12px;flex-
       <div class="sub" id="capsub"></div>
     </div>
     <div class="quote">
-      <div class="label">Or · PAXG/USDT</div>
+      <div class="label">Or · prix de l'once</div>
       <div class="v num" id="px">—</div>
       <div class="e num" id="pxe"></div>
     </div>
@@ -240,6 +240,7 @@ const $ = id => document.getElementById(id);
 const nf = (v, d = 2) => (v == null || isNaN(v)) ? "—" : Number(v).toLocaleString("fr-FR", {minimumFractionDigits: d, maximumFractionDigits: d});
 const eur = (v, d = 2) => nf(v, d) + " €";
 const sgn = (v, d = 2, u = " €") => (v > 0 ? "+" : v < 0 ? "−" : "") + nf(Math.abs(v), d) + u;
+const eurPx = v => (v == null || isNaN(v)) ? "—" : nf(v / EURUSD) + " €";
 const cls = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const utc = s => s ? new Date(s.replace(" ", "T") + (s.length <= 16 ? ":00Z" : "Z")) : null;
@@ -273,8 +274,8 @@ function renderHero(d){
     `<span class="chip ${ch > 0 ? "pos" : ch < 0 ? "neg" : "neu"} num">${sgn(ch)} · ${sgn(pct, 1, " %")}</span>
      <span>depuis ${eur(CAP0, 0)}</span><span class="faint">·</span><span>${n} trade${n > 1 ? "s" : ""}</span>
      <span class="faint">·</span><span>arrêt sous ${eur(STOP_CAP, 0)}</span>`;
-  $("px").textContent = d.prix ? nf(d.prix) + " $" : "—";
-  $("pxe").textContent = d.prix ? "≈ " + eur(d.prix / EURUSD) + " l'once" : "cours indisponible";
+  $("px").textContent = d.prix ? eurPx(d.prix) : "—";
+  $("pxe").textContent = d.prix ? "l'once · " + nf(d.prix) + " $ (EUR/USD 1,10)" : "cours indisponible";
 }
 
 function renderPosition(d){
@@ -309,9 +310,9 @@ function renderPosition(d){
       <div class="lb rr" style="left:100%">${tp ? "objectif 3R" : "3R (sans objectif)"}</div>
     </div>
     <div class="kv num">
-      <div><span class="k">Entrée</span><span class="v">${nf(e)} $</span></div>
-      <div><span class="k">Stop</span><span class="v neg">${nf(s)} $</span></div>
-      <div><span class="k">Objectif</span><span class="v ${tp ? "pos" : "faint"}">${tp ? nf(tp) + " $" : "aucun"}</span></div>
+      <div><span class="k">Entrée</span><span class="v">${eurPx(e)}</span></div>
+      <div><span class="k">Stop</span><span class="v neg">${eurPx(s)}</span></div>
+      <div><span class="k">Objectif</span><span class="v ${tp ? "pos" : "faint"}">${tp ? eurPx(tp) : "aucun"}</span></div>
       <div><span class="k">Risque au stop</span><span class="v">${eur(risk / EURUSD)}</span></div>
     </div>`;
 }
@@ -376,13 +377,13 @@ function renderMT5(d){
   if (m.erreur) h += `<div class="note err">${esc(m.erreur)}</div>`;
   else if (m.algo === false) h += `<div class="note err">Active le bouton « Algo Trading » dans MetaTrader 5, sinon les ordres seront refusés.</div>`;
   if (pos.length){
-    h += `<table class="mini num">${pos.map(p => `<tr><td><span class="side ${p.sens === "achat" ? "buy" : "sell"}">${p.sens}</span> ${p.volume} lot à ${nf(p.entree)}</td>
-      <td>stop ${nf(p.stop)} · obj. ${p.objectif ? nf(p.objectif) : "—"}</td><td class="${cls(p.profit)}">${sgn(p.profit)}</td></tr>`).join("")}</table>`;
+    h += `<table class="mini num">${pos.map(p => `<tr><td><span class="side ${p.sens === "achat" ? "buy" : "sell"}">${p.sens}</span> ${p.volume} lot à ${nf(p.entree)} €</td>
+      <td>stop ${nf(p.stop)} € · obj. ${p.objectif ? nf(p.objectif) + " €" : "—"}</td><td class="${cls(p.profit)}">${sgn(p.profit)}</td></tr>`).join("")}</table>`;
   } else if (m.solde != null){
     h += `<div class="note ok">Aucune position démo ouverte. Le prochain trade du bot sera passé ici automatiquement.</div>`;
   }
   const o = (d.ordres || []).slice(-3).reverse();
-  if (o.length) h += `<table class="mini">${o.map(x => `<tr><td class="muted num">${esc(x.utc.slice(5, 16))}</td><td>${esc(x.action)} ${esc(x.sens)} ${x.prix ? "à " + esc(x.prix) : ""}</td><td class="muted">${esc(x.note)}</td></tr>`).join("")}</table>`;
+  if (o.length) h += `<table class="mini">${o.map(x => `<tr><td class="muted num">${esc(x.utc.slice(5, 16))}</td><td>${esc(x.action)} ${esc(x.sens)} ${x.prix ? "à " + esc(x.prix) + " €" : ""}</td><td class="muted">${esc(x.note)}</td></tr>`).join("")}</table>`;
   if (m.compte) h += `<div class="legend"><span>compte ${esc(m.compte)} · ${esc(m.serveur || m.courtier || "")}</span><span>levier ${esc(m.levier)}</span></div>`;
   $("mt").innerHTML = h;
 }
@@ -396,14 +397,14 @@ function renderTrades(d){
   $("tr").innerHTML = `<table class="tbl num"><thead><tr><th>#</th><th>Entrée (UTC)</th><th>Sens</th><th>Entrée</th><th>Sortie</th><th>Motif</th><th class="r">R</th><th class="r">Net</th></tr></thead><tbody>
     ${t.map(x => `<tr><td class="muted">${esc(x.n)}</td><td>${esc(x.entree_utc)}</td>
       <td><span class="side ${x.sens === "achat" ? "buy" : "sell"}">${esc(x.sens)}</span></td>
-      <td>${nf(+x.entree)} $</td><td>${nf(+x.sortie)} $</td><td class="muted">${esc(x.motif)}</td>
+      <td>${eurPx(+x.entree)}</td><td>${eurPx(+x.sortie)}</td><td class="muted">${esc(x.motif)}</td>
       <td class="r ${cls(+x.R)}">${sgn(+x.R, 2, "")}</td><td class="r ${cls(+x.net)}">${sgn(+x.net)}</td></tr>`).join("")}
     </tbody></table>`;
 }
 
 function renderSessions(d){
   const s = [...(d.sessions || [])].reverse();
-  $("ses").innerHTML = s.length ? s.map(x => `<li><time class="num">${esc(hm(utc(x.utc)))}</time><span>${esc(x.decision)}${x.prix ? ` <span class="faint num">· ${nf(+x.prix)} $</span>` : ""}</span></li>`).join("")
+  $("ses").innerHTML = s.length ? s.map(x => `<li><time class="num">${esc(hm(utc(x.utc)))}</time><span>${esc(x.decision)}${x.prix ? ` <span class="faint num">· ${eurPx(+x.prix)}</span>` : ""}</span></li>`).join("")
     : `<li class="muted">Aucune séance enregistrée sur ce compte.</li>`;
 }
 
