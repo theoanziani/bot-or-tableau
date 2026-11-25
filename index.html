@@ -144,6 +144,19 @@ svg.eq{width:100%;height:170px;display:block;overflow:visible}
 .confirm[hidden],.toast[hidden]{display:none}
 .confirm .acts{display:flex;gap:8px}
 .toast{margin-top:14px;padding:10px 14px;border-radius:12px;background:var(--gold-soft);font-size:13px}
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:26px}
+.asset{all:unset;box-sizing:border-box;cursor:pointer;display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.asset:hover{border-color:var(--faint)} .asset:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.asset.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.asset .atop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.asset .nm{font-weight:600;font-size:14px}
+.asset .cp{font-size:19px;font-weight:500;letter-spacing:-.01em;margin-top:8px}
+.asset .ln{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);margin-top:4px}
+.tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--line);color:var(--muted);white-space:nowrap}
+.tag.buy{background:var(--pos-soft);color:var(--pos)} .tag.sell{background:var(--neg-soft);color:var(--neg)}
+.dhead{display:flex;align-items:baseline;gap:12px;margin:0 0 14px}
+.dhead h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:30px;letter-spacing:-.01em}
+@media (max-width:900px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 footer{margin-top:28px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--faint);font-size:12px}
 
 @media (max-width:900px){.s7,.s5{grid-column:span 12}}
@@ -184,16 +197,19 @@ footer{margin-top:28px;display:flex;justify-content:space-between;gap:12px;flex-
 
   <section class="hero">
     <div>
-      <div class="label">Capital du compte</div>
+      <div class="label" id="glabel">Résultats globaux</div>
       <div class="big num" id="cap">—</div>
       <div class="sub" id="capsub"></div>
     </div>
     <div class="quote">
-      <div class="label">Or · prix de l'once</div>
+      <div class="label" id="pxl">Prix</div>
       <div class="v num" id="px">—</div>
       <div class="e num" id="pxe"></div>
     </div>
   </section>
+
+  <nav class="strip" id="strip" aria-label="Ressources"></nav>
+  <div class="dhead"><h2 id="dtitle">—</h2><span class="muted" id="dsub"></span></div>
 
   <main class="grid">
     <section class="card s7">
@@ -240,7 +256,9 @@ const $ = id => document.getElementById(id);
 const nf = (v, d = 2) => (v == null || isNaN(v)) ? "—" : Number(v).toLocaleString("fr-FR", {minimumFractionDigits: d, maximumFractionDigits: d});
 const eur = (v, d = 2) => nf(v, d) + " €";
 const sgn = (v, d = 2, u = " €") => (v > 0 ? "+" : v < 0 ? "−" : "") + nf(Math.abs(v), d) + u;
-const eurPx = v => (v == null || isNaN(v)) ? "—" : nf(v / EURUSD) + " €";
+let CUR = {div: EURUSD, unit: " €"};
+const eurPx = v => (v == null || isNaN(v)) ? "—" : nf(v / CUR.div) + CUR.unit;
+let SEL = (() => { try{ return localStorage.getItem("bor_sel") || "or"; }catch(e){ return "or"; } })();
 const cls = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const utc = s => s ? new Date(s.replace(" ", "T") + (s.length <= 16 ? ":00Z" : "Z")) : null;
@@ -257,26 +275,58 @@ const hm = d => d ? d.toLocaleString("fr-FR", {weekday: "short", day: "2-digit",
 let last = null, lastOk = 0;
 
 function renderStatus(d){
+  const all = (d.actifs || []).map(a => utc(a.status && a.status.maj_utc));
+  const stale = (d.actifs || []).filter((a, i) => !all[i] || (Date.now() - all[i]) > 20 * 60 * 1000);
   const maj = utc(d.status && d.status.maj_utc);
-  const fresh = maj && (Date.now() - maj) < 20 * 60 * 1000;
+  const fresh = maj && (Date.now() - maj) < 20 * 60 * 1000 && !stale.length;
   $("dot").className = "dot " + (fresh ? "on" : "off");
-  $("run").textContent = fresh ? "Bot en marche" : (maj ? "Bot arrêté · " + ago(maj) : "Bot introuvable");
+  $("run").textContent = fresh ? "Bots en marche" : (stale.length ? "Arrêté : " + stale.map(a => a.label).join(", ") : "Bot introuvable");
   $("ver").textContent = "· règles " + (d.compte || "v6") + " · paper trading";
 }
 
 function renderHero(d){
-  const st = d.status || {};
-  const cap = st.capital;
-  $("cap").innerHTML = cap == null ? "—" : nf(cap) + "<small>€</small>";
-  const ch = cap - CAP0, pct = ch / CAP0 * 100;
-  const n = Number(st.trades || 0);
-  $("capsub").innerHTML = cap == null ? "" :
-    `<span class="chip ${ch > 0 ? "pos" : ch < 0 ? "neg" : "neu"} num">${sgn(ch)} · ${sgn(pct, 1, " %")}</span>
-     <span>depuis ${eur(CAP0, 0)}</span><span class="faint">·</span><span>${n} trade${n > 1 ? "s" : ""}</span>
-     <span class="faint">·</span><span>arrêt sous ${eur(STOP_CAP, 0)}</span>`;
-  $("px").textContent = d.prix ? eurPx(d.prix) : "—";
-  $("pxe").textContent = d.prix ? "l'once · " + nf(d.prix) + " $ (EUR/USD 1,10)" : "cours indisponible";
+  const A = d.actifs || [];
+  const cap = A.reduce((s, a) => s + (+((a.status || {}).capital ?? CAP0)), 0), base = CAP0 * A.length;
+  const trades = A.flatMap(a => a.trades || []);
+  const n = trades.length, wins = trades.filter(x => +x.net > 0).length;
+  const open = A.filter(a => a.status && a.status.position).length;
+  const lat = A.reduce((s, a) => s + (+latentOf(a) || 0), 0);
+  $("glabel").textContent = `Résultats globaux · ${A.length} ressources`;
+  $("cap").innerHTML = nf(cap) + "<small>€</small>";
+  const ch = cap - base, pct = base ? ch / base * 100 : 0;
+  $("capsub").innerHTML = `<span class="chip ${ch > 0 ? "pos" : ch < 0 ? "neg" : "neu"} num">${sgn(ch)} · ${sgn(pct, 1, " %")}</span>
+     <span>sur ${eur(base, 0)}</span><span class="faint">·</span><span>${n} trade${n > 1 ? "s" : ""}${n ? ` · ${Math.round(wins / n * 100)} % gagnants` : ""}</span>
+     <span class="faint">·</span><span>${open} position${open > 1 ? "s" : ""} ouverte${open > 1 ? "s" : ""}${open ? ` (<span class="${cls(lat)}">${sgn(lat)}</span> latent)` : ""}</span>`;
+  const a = d.A;
+  $("pxl").textContent = a ? `${a.label} · prix` : "Prix";
+  $("px").textContent = a && a.prix ? eurPx(a.prix) : "—";
+  $("pxe").textContent = a && a.prix ? (CUR.unit === " €" && CUR.div !== 1 ? nf(a.prix) + " $ (EUR/USD 1,10)" : a.symbole || "") : "cours indisponible";
 }
+function latentOf(a){
+  const p = a.status && a.status.position;
+  if (!p) return null;
+  if (a.status.latent != null) return +a.status.latent;
+  return a.prix ? (a.prix - p.entree) * p.sens * (p.volume ? 1 : 1) / a.div : null;
+}
+function renderStrip(d){
+  $("strip").innerHTML = (d.actifs || []).map(a => {
+    const st = a.status || {}, p = st.position, cap = +(st.capital ?? CAP0), ch = cap - CAP0, lat = latentOf(a);
+    const n = (a.trades || []).length;
+    return `<button class="asset ${a.id === SEL ? "sel" : ""}" data-id="${a.id}" type="button" aria-pressed="${a.id === SEL}">
+      <div class="atop"><span class="nm">${esc(a.label)}</span>${p ? `<span class="tag ${p.sens === 1 ? "buy" : "sell"}">${p.sens === 1 ? "▲ achat" : "▼ vente"}</span>` : `<span class="tag">—</span>`}</div>
+      <div class="cp num">${eur(cap)}</div>
+      <div class="ln num"><span class="${cls(ch)}">${sgn(ch)}</span><span>${p ? `<span class="${cls(lat)}">${lat == null ? "—" : sgn(lat)}</span>` : n + " trade" + (n > 1 ? "s" : "")}</span></div>
+    </button>`;
+  }).join("");
+  const a = d.A;
+  $("dtitle").textContent = a ? a.label : "—";
+  $("dsub").textContent = a ? `${a.symbole || ""} · compte fictif de ${eur(CAP0, 0)}${a.levier ? " · levier " + a.levier : ""}` : "";
+}
+$("strip").addEventListener("click", ev => {
+  const b = ev.target.closest(".asset"); if (!b) return;
+  SEL = b.dataset.id; try{ localStorage.setItem("bor_sel", SEL); }catch(e){}
+  if (last) render(last);
+});
 
 function renderPosition(d){
   const p = d.status && d.status.position;
@@ -286,9 +336,9 @@ function renderPosition(d){
     $("pos").innerHTML = `<div class="empty">Aucune position ouverte.<br><span class="faint">${esc(dec ? "Dernière décision : " + dec : "")}</span></div>`;
     return;
   }
-  const buy = p.sens === 1, e = +p.entree, s = +p.stop, tp = p.tp ? +p.tp : null, px = d.prix;
+  const buy = p.sens === 1, e = +p.entree, s = +p.stop, tp = p.objectif ? +p.objectif : (p.tp && p.tp !== true ? +p.tp : null), px = d.prix;
   const risk = Math.abs(e - s);
-  const lat = px ? (px - e) * p.sens / EURUSD : null;
+  const lat = latentOf(d.A);
   const r = px ? (px - e) * p.sens / risk : null;
   const t0 = new Date(p.t_entree);
   $("posr").textContent = "ouverte " + ago(t0);
@@ -296,7 +346,7 @@ function renderPosition(d){
   const far = tp ?? (e + p.sens * 3 * risk);
   const at = v => Math.min(100, Math.max(0, (v - s) / (far - s) * 100));
   $("pos").innerHTML = `
-    <span class="side ${buy ? "buy" : "sell"}">${buy ? "▲ ACHAT" : "▼ VENTE"} · 0,01 lot</span>
+    <span class="side ${buy ? "buy" : "sell"}">${buy ? "▲ ACHAT" : "▼ VENTE"} · ${nf(p.volume || 0.01)} lot</span>
     <div class="pnl num ${cls(lat)}">${lat == null ? "—" : sgn(lat)}</div>
     <div class="muted num">résultat latent avant frais${r == null ? "" : " · " + sgn(r, 2, " R")}</div>
     <div class="gauge" aria-hidden="true">
@@ -313,7 +363,7 @@ function renderPosition(d){
       <div><span class="k">Entrée</span><span class="v">${eurPx(e)}</span></div>
       <div><span class="k">Stop</span><span class="v neg">${eurPx(s)}</span></div>
       <div><span class="k">Objectif</span><span class="v ${tp ? "pos" : "faint"}">${tp ? eurPx(tp) : "aucun"}</span></div>
-      <div><span class="k">Risque au stop</span><span class="v">${eur(risk / EURUSD)}</span></div>
+      <div><span class="k">Risque au stop</span><span class="v">${eur(p.perte_stop != null ? p.perte_stop : risk / EURUSD)}</span></div>
     </div>`;
 }
 
@@ -408,9 +458,13 @@ function renderSessions(d){
     : `<li class="muted">Aucune séance enregistrée sur ce compte.</li>`;
 }
 
-function render(d){
+function render(d0){
+  if (!d0.actifs) d0.actifs = [{id: "or", label: "Or", div: EURUSD, unite: " €", status: d0.status, trades: d0.trades, sessions: d0.sessions, prix: d0.prix}];
+  const A = d0.actifs.find(a => a.id === SEL) || d0.actifs[0];
+  CUR = {div: A.div || 1, unit: A.unite || " €"};
+  const d = Object.assign({}, d0, {A, status: A.status, trades: A.trades || [], sessions: A.sessions || [], prix: A.prix});
   try{ renderStatus(d); }catch(e){ console.error(e); }
-  for (const f of [renderHero, renderPosition, renderEquity, renderAnalysis, renderMT5, renderTrades, renderSessions]){
+  for (const f of [renderHero, renderStrip, renderPosition, renderEquity, renderAnalysis, renderMT5, renderTrades, renderSessions]){
     try{ f(d); }catch(e){ console.error(f.name, e); }
   }
 }
