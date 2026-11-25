@@ -144,7 +144,7 @@ svg.eq{width:100%;height:170px;display:block;overflow:visible}
 .confirm[hidden],.toast[hidden]{display:none}
 .confirm .acts{display:flex;gap:8px}
 .toast{margin-top:14px;padding:10px 14px;border-radius:12px;background:var(--gold-soft);font-size:13px}
-.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:26px}
+.strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:26px}
 .asset{all:unset;box-sizing:border-box;cursor:pointer;display:block;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
 .asset:hover{border-color:var(--faint)} .asset:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .asset.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
@@ -156,7 +156,7 @@ svg.eq{width:100%;height:170px;display:block;overflow:visible}
 .tag.buy{background:var(--pos-soft);color:var(--pos)} .tag.sell{background:var(--neg-soft);color:var(--neg)}
 .dhead{display:flex;align-items:baseline;gap:12px;margin:0 0 14px}
 .dhead h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:30px;letter-spacing:-.01em}
-@media (max-width:900px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 footer{margin-top:28px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--faint);font-size:12px}
 
 @media (max-width:900px){.s7,.s5{grid-column:span 12}}
